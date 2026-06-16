@@ -1,8 +1,8 @@
 import { prisma } from "../config/db.js"
 import bcrypt from "bcryptjs";
+import { generateToken } from '../utils/generateToken.js'
 const register = async (req,res)=>{
     const {name,email,password} = req.body;
-    res.json({message:"register user"})
     //check if user already exists
 
     const userExists = await prisma.user.findUnique({
@@ -25,16 +25,50 @@ const register = async (req,res)=>{
         },
     });
 
-    res.status(201).json({
-        status:"success"
+    return res.status(201).json({
+        status:"success",
         data:{
             user: {
                 id:user.id,
                 name: name,
                 email: email,
-            }
-        }
-    })
+            },
+        },
+    });
 };
 
-export { register}; 
+
+const login = async(req,res)=>{
+    const { email,password } = req.body;
+    //check if user email exists in the table
+
+    const user = await prisma.user.findUnique({
+        where:{email:email},
+    });
+    if(!user){
+        return res.status(401)
+        .json({error:"Invalid Email or password"})
+    }
+    //verify password
+    const isPasswordValid = await bcrypt.compare(password,user.password);
+    if(!isPasswordValid){
+        return res.status(401)
+        .json({error:"Invalid Email or password"})
+    }
+    //Generate the JWT Token
+
+    const token = generateToken(user.id) 
+    
+     return res.status(201).json({
+        status:"success",
+        data:{
+            user: {
+                id:user.id,
+                email: email,
+            },
+            token,
+        },
+    })
+}
+
+export { register, login}; 
