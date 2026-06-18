@@ -2,14 +2,15 @@ import { prisma } from "../config/db.js"
 import bcrypt from "bcryptjs";
 import { generateToken } from '../utils/generateToken.js'
 const register = async (req,res)=>{
+  try {
     const {name,email,password} = req.body;
     //check if user already exists
 
     const userExists = await prisma.user.findUnique({
-        where:{email:email},
+      where:{email:email},
     });
     if(userExists){
-        return res.status(400)
+      return res.status(400)
         .json({error:"User already exists with this email"})
     }
     // Hash Password
@@ -18,25 +19,31 @@ const register = async (req,res)=>{
 
     //Create User
     const user = await prisma.user.create({
-        data:{
-            name,
-            email,
-            password: hashedPassword,
-        },
+      data:{
+        name,
+        email,
+        password: hashedPassword,
+      },
     });
+
+    const token = generateToken(user.id);
 
     return res.status(201).json({
-        status:"success",
-        data:{
-            user: {
-                id:user.id,
-                name: name,
-                email: email,
-            },
+      status:"success",
+      data:{
+        user: {
+          id:user.id,
+          name: name,
+          email: email,
         },
+        token,
+      },
     });
+  } catch (error) {
+    console.error("Register error:", error.message); // 👈 this will show exact error
+    return res.status(500).json({ error: error.message });
+  }
 };
-
 
 const login = async(req,res)=>{
     const { email,password } = req.body;
@@ -68,7 +75,7 @@ const login = async(req,res)=>{
             },
             token,
         },
-    })
+    });
 }
 
 export { register, login}; 
